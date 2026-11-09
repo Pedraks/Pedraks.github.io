@@ -530,12 +530,14 @@
                             </div>
                         </div>
         
-                        <!-- Coluna de Mídia (Vídeo 100% limpo com tag discreta) -->
+                        <!-- Coluna de Mídia (Imagem preenchendo 100% da caixa) -->
                         <div class="lg:col-span-5">
-                            <div class="w-full h-72 sm:h-80 rounded-2xl bg-slate-800 shadow-xl overflow-hidden border border-slate-700 relative">
-                                <img src="assets/equipamento.png" type="image/png">
-                                <!-- Tag discreta no topo superior sem tapar os equipamentos -->
-                                <div class="absolute top-3 right-3 bg-slate-900/80 backdrop-blur-md px-3 py-1 rounded-full border border-slate-700/50 text-[11px] font-semibold text-emerald-400 flex items-center gap-1.5">
+                            <div class="w-full aspect-video sm:aspect-[4/3] rounded-2xl shadow-xl overflow-hidden border border-slate-700 relative">
+                                <!-- Tag de imagem corrigida com object-cover -->
+                                <img src="assets/equipamento.png" alt="Equipamentos Mr. Clean" class="w-full h-full object-cover">
+                                
+                                <!-- Tag discreta no topo superior -->
+                                <div class="absolute top-3 right-3 bg-slate-900/80 backdrop-blur-md px-3 py-1 rounded-full border border-slate-700/50 text-[11px] font-semibold text-emerald-400 flex items-center gap-1.5 z-10">
                                     <span class="w-2 h-2 rounded-full bg-emerald-500 pulse-online"></span>
                                     Atendimento 24h
                                 </div>
