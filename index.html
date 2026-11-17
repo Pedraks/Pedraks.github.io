@@ -641,6 +641,11 @@
                             <span class="bg-brand-600 text-white text-[10px] font-bold px-2.5 py-0.5 rounded-full">Etapa {{ currentStep }} de 5</span>
                         </div>
                         <h3 class="text-xl font-black">Monte seu Orçamento Online</h3>
+
+                        <!-- Selo quando o cupom está ativado -->
+                        <div v-if="appliedCoupon" class="mt-2.5 inline-flex items-center gap-1.5 bg-emerald-500/20 border border-emerald-400/40 text-emerald-300 text-xs font-bold px-3 py-1 rounded-full animate-fade-in">
+                            <span>🎟️ Cupom <strong>{{ appliedCoupon.code }}</strong> ativado ({{ appliedCoupon.discount }}% OFF acima de R$ {{ appliedCoupon.minAmount }})</span>
+                        </div>
                         
                         <!-- Progress bar -->
                         <div class="w-full bg-slate-800 h-1.5 rounded-full mt-4 overflow-hidden">
@@ -898,7 +903,7 @@
                             </div>
                         </transition>
 
-                        <!-- STEP 5: FINAL CONTACT & SUBMIT (REMOVED EMAIL) -->
+                        <!-- STEP 5: FINAL CONTACT & SUBMIT -->
                         <transition name="step-transition" mode="out-in">
                             <div v-if="currentStep === 5" key="step5" class="space-y-4">
                                 <div class="text-center">
@@ -916,7 +921,43 @@
                                         <label class="block text-xs font-bold text-slate-700 mb-1">WhatsApp de Contato</label>
                                         <input type="tel" v-model="customer.phone" placeholder="(48) 99999-9999" class="w-full bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-medium outline-none focus:border-brand-500">
                                     </div>
-                                    <!-- E-mail removed completely as requested -->
+
+                                    <!-- Campo de Cupom de Desconto -->
+                                    <div class="pt-1">
+                                        <div class="flex items-center justify-between mb-1">
+                                            <label class="block text-xs font-bold text-slate-700">🎟️ Cupom de Desconto (Opcional)</label>
+                                            <span class="text-[10px] font-semibold text-slate-400">Válido acima de R$ 100</span>
+                                        </div>
+                                        <div class="flex gap-2">
+                                            <input type="text" 
+                                                   v-model="couponInput" 
+                                                   @keyup.enter="applyCoupon"
+                                                   :disabled="!!appliedCoupon"
+                                                   placeholder="Insira seu cupom aqui" 
+                                                   class="flex-1 bg-slate-50 border border-slate-200 rounded-xl p-3 text-xs font-bold uppercase tracking-wider outline-none focus:border-brand-500 disabled:opacity-70">
+                                            
+                                            <button v-if="!appliedCoupon" 
+                                                    type="button"
+                                                    @click="applyCoupon" 
+                                                    class="px-4 py-3 rounded-xl bg-slate-800 hover:bg-slate-900 text-white font-bold text-xs transition-colors shrink-0">
+                                                Aplicar
+                                            </button>
+                                            <button v-else 
+                                                    type="button"
+                                                    @click="removeCoupon" 
+                                                    class="px-4 py-3 rounded-xl bg-red-100 hover:bg-red-200 text-red-700 font-bold text-xs transition-colors shrink-0">
+                                                Remover
+                                            </button>
+                                        </div>
+
+                                        <!-- Feedback de Sucesso ou Erro -->
+                                        <p v-if="appliedCoupon" class="text-[11px] font-bold text-emerald-600 mt-1.5 animate-fade-in">
+                                            ✅ Cupom {{ appliedCoupon.code }} aplicado! Você garantiu {{ appliedCoupon.discount }}% OFF (válido para serviços acima de R$ {{ appliedCoupon.minAmount }},00).
+                                        </p>
+                                        <p v-if="couponError" class="text-[11px] font-semibold text-red-500 mt-1.5 animate-fade-in">
+                                            ⚠️ {{ couponError }}
+                                        </p>
+                                    </div>
 
                                     <!-- Summary Box -->
                                     <div class="bg-slate-900 text-white p-4 rounded-2xl space-y-2 text-xs shadow-inner mt-2">
@@ -924,6 +965,16 @@
                                         <ul class="space-y-1 text-slate-300">
                                             <li v-for="item in getSelectedItemsFormatted()" :key="item">• {{ item }}</li>
                                         </ul>
+
+                                        <!-- Destaque do Cupom no Resumo -->
+                                        <div v-if="appliedCoupon" class="bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 px-3 py-2 rounded-xl text-[11px] mt-2 space-y-0.5">
+                                            <div class="flex items-center justify-between font-bold">
+                                                <span>🎟️ Cupom: {{ appliedCoupon.code }}</span>
+                                                <span>{{ appliedCoupon.discount }}% OFF</span>
+                                            </div>
+                                            <p class="text-[10px] text-emerald-200/80">Válido para orçamentos acima de R$ {{ appliedCoupon.minAmount }},00</p>
+                                        </div>
+
                                         <p class="text-[11px] text-slate-400 pt-2 border-t border-slate-800 mt-2">📍 {{ location.neighborhood || 'Bairro' }}, {{ location.city }}</p>
                                     </div>
                                 </div>
@@ -1190,6 +1241,14 @@
 
                 onMounted(() => {
                     startReviewCarousel();
+
+                    // Ativa automaticamente se o cliente abrir via link da influencer (?cupom=FABRINE20)
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const urlCoupon = urlParams.get('cupom');
+                    if (urlCoupon) {
+                        couponInput.value = urlCoupon;
+                        applyCoupon();
+                    }
                 });
 
                 onUnmounted(() => {
@@ -1248,6 +1307,42 @@
                     name: '',
                     phone: ''
                 });
+
+                // Cupons de Desconto
+                const validCoupons = {
+                    'FABRINE20': { discount: 20, minAmount: 100 }
+                };
+                const couponInput = ref('');
+                const appliedCoupon = ref(null);
+                const couponError = ref('');
+
+                const applyCoupon = () => {
+                    couponError.value = '';
+                    const normalizedCode = couponInput.value.trim().toUpperCase();
+
+                    if (!normalizedCode) {
+                        couponError.value = 'Digite um código de cupom.';
+                        return;
+                    }
+
+                    if (validCoupons[normalizedCode]) {
+                        appliedCoupon.value = {
+                            code: normalizedCode,
+                            discount: validCoupons[normalizedCode].discount,
+                            minAmount: validCoupons[normalizedCode].minAmount
+                        };
+                        couponInput.value = normalizedCode;
+                    } else {
+                        appliedCoupon.value = null;
+                        couponError.value = 'Cupom inválido. Confira se digitou corretamente.';
+                    }
+                };
+
+                const removeCoupon = () => {
+                    appliedCoupon.value = null;
+                    couponInput.value = '';
+                    couponError.value = '';
+                };
 
                 // Methods
                 
@@ -1313,9 +1408,20 @@
                     return list.length ? list : ['Nenhum item adicionado'];
                 };
 
-                // WhatsApp message generation (Email completely removed)
                 // WhatsApp message generation
                 const sendWhatsApp = () => {
+                    // Garante que se o cliente digitou FABRINE20 e clicou direto em enviar, o cupom vai junto
+                    if (!appliedCoupon.value && couponInput.value.trim()) {
+                        const typedCode = couponInput.value.trim().toUpperCase();
+                        if (validCoupons[typedCode]) {
+                            appliedCoupon.value = {
+                                code: typedCode,
+                                discount: validCoupons[typedCode].discount,
+                                minAmount: validCoupons[typedCode].minAmount
+                            };
+                        }
+                    }
+
                     const itemsText = getSelectedItemsFormatted().map(i => `  • ${i}`).join('\n');
                     
                     let servicesText = '';
@@ -1323,19 +1429,22 @@
                     if (extraServices.value.stainRemoval) servicesText += '  • Remoção Especial de Manchas\n';
                     if (extraServices.value.waterproof) servicesText += '  • Impermeabilização Blindagem (Proteção Total)\n';
                     
-                    // Se nenhum for selecionado
                     if (servicesText === '') {
                         servicesText = '  • Apenas orçamento padrão';
                     } else {
-                        servicesText = servicesText.trimEnd(); // Remove a última quebra de linha
+                        servicesText = servicesText.trimEnd();
                     }
+
+                    const couponText = appliedCoupon.value 
+                        ? `- SIM — Código: *${appliedCoupon.value.code}* (${appliedCoupon.value.discount}% OFF acima de R$ ${appliedCoupon.value.minAmount})` 
+                        : `- Não informado`;
                 
                     const message = 
 `👋 *Olá Mr. Clean! Gostaria de um orçamento:*
 
 👤 *Meus Dados:*
-  • Nome: ${customer.value.name}
-  • WhatsApp: ${customer.value.phone || 'Não informado'}
+- Nome: ${customer.value.name}
+- WhatsApp: ${customer.value.phone || 'Não informado'}
 
 🛋️ *Itens Selecionados:*
 ${itemsText}
@@ -1343,15 +1452,18 @@ ${itemsText}
 ✨ *Serviços Selecionados:*
 ${servicesText}
 
+🎟️ *Cupom de Desconto:*
+${couponText}
+
 📍 *Local do Atendimento:*
-  • Cidade: ${location.value.city}
-  • Bairro: ${location.value.neighborhood || 'Não informado'}
-  • Turno: ${location.value.preferredShift}
+- Cidade: ${location.value.city}
+- Bairro: ${location.value.neighborhood || 'Não informado'}
+- Turno: ${location.value.preferredShift}
 
 _Solicitado através do site_`;
 
-                const encodedMessage = encodeURIComponent(message);
-                window.open(`https://wa.me/5548920039561?text=${encodedMessage}`, '_blank');
+                    const encodedMessage = encodeURIComponent(message);
+                    window.open(`https://wa.me/5548920039561?text=${encodedMessage}`, '_blank');
                 };
 
                 return {
@@ -1366,6 +1478,11 @@ _Solicitado através do site_`;
                     extraServices,
                     location,
                     customer,
+                    couponInput,
+                    appliedCoupon,
+                    couponError,
+                    applyCoupon,
+                    removeCoupon,
                     openFaq,
                     isCategorySelected,
                     toggleCategory,
@@ -1384,8 +1501,3 @@ _Solicitado através do site_`;
                     startReviewCarousel,
                     pauseReviewCarousel
                 };
-            }
-        }).mount('#app');
-    </script>
-</body>
-</html>
