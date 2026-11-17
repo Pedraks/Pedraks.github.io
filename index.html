@@ -1216,7 +1216,7 @@
                 };
 
                 // Wizard State: Categories
-                const selectedCategories = ref(['sofas']);
+                const selectedCategories = ref([]);
 
                 // Wizard State: Items (Quantities start at 0)
                 const itemsList = ref({
@@ -1334,9 +1334,7 @@
                 const toggleCategory = (cat) => {
                     const idx = selectedCategories.value.indexOf(cat);
                     if (idx > -1) {
-                        if (selectedCategories.value.length > 1) {
-                            selectedCategories.value.splice(idx, 1);
-                        }
+                        selectedCategories.value.splice(idx, 1);
                     } else {
                         selectedCategories.value.push(cat);
                     }
